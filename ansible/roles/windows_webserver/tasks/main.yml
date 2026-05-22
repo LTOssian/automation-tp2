@@ -1,0 +1,37 @@
+---
+- name: Gather facts (WinRM connectivity check)
+  ansible.windows.win_ping:
+
+- name: Enable IIS Web Server feature
+  ansible.windows.win_feature:
+    name:
+      - Web-Server           # IIS core
+      - Web-Default-Doc
+      - Web-Static-Content
+    state: present
+  register: iis_install
+
+- name: Reboot if IIS install requires it
+  ansible.windows.win_reboot:
+  when: iis_install.reboot_required
+
+- name: Ensure IIS service (W3SVC) is running
+  ansible.windows.win_service:
+    name: W3SVC
+    state: started
+    start_mode: auto
+
+- name: Deploy HTML page to IIS default site
+  ansible.windows.win_copy:
+    src: index.html
+    dest: C:\inetpub\wwwroot\index.html
+
+- name: Verify page is served locally
+  ansible.windows.win_uri:
+    url: http://localhost/index.html
+    status_code: 200
+  register: iis_check
+
+- name: Show IIS health check result
+  ansible.builtin.debug:
+    msg: "IIS responded with HTTP {{ iis_check.status_code }}"

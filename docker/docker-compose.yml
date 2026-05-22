@@ -1,0 +1,19 @@
+services:
+  ubuntu-target:
+    build:
+      context: ./ubuntu-target
+    container_name: ubuntu-target
+    hostname: ubuntu-target
+    ports:
+      - "2222:22"       # SSH access from host / Ansible
+    networks:
+      devops-net:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+
+networks:
+  devops-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

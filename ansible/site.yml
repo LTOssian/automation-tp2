@@ -2,6 +2,7 @@
 # Ansible site entry-point
 # Run: ansible-playbook -i inventory.ini site.yml
 
+# ---------------------------------------------------------------------------
 - name: Gather facts on Ansible Controller (localhost)
   hosts: localhost
   connection: local
@@ -15,7 +16,7 @@
           | IPv4: {{ ansible_default_ipv4.address | default('N/A') }}
 
 # ---------------------------------------------------------------------------
-- name: Deploy nginx + HTML page on web servers
+- name: Deploy nginx + HTML page on Linux web servers (Docker)
   hosts: webservers
   become: true
   roles:
@@ -27,3 +28,10 @@
   become: true
   roles:
     - loadbalancer
+
+# ---------------------------------------------------------------------------
+- name: Deploy IIS + HTML page on Windows VM
+  hosts: windows
+  gather_facts: false
+  roles:
+    - windows_webserver

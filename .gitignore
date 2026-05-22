@@ -1,3 +1,8 @@
+# SSH keys — never commit private keys
+ansible/ssh_keys/ansible_ed25519
+ansible/ssh_keys/ansible_ed25519.pub
+docker/ubuntu-target/authorized_keys
+
 # Generated files
 ansible/inventory.ini
 *.tfstate

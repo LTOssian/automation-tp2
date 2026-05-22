@@ -1,13 +1,16 @@
-name: Deploy nginx with Terraform + Ansible
+name: Deploy nginx + IIS with Terraform + Ansible
 
 on:
   push:
     branches: [main]
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1 – Terraform: generate Ansible inventory
+  # ---------------------------------------------------------------------------
   terraform:
     name: Generate Ansible Inventory
-    runs-on: self-hosted          # your local runner
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -28,11 +31,15 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
         env:
-          # Comma-separated list → converted to JSON list for Terraform
-          TF_VAR_web_hosts: ${{ vars.WEB_HOSTS || '["127.0.0.1"]' }}
+          TF_VAR_web_hosts: ${{ vars.WEB_HOSTS || '["172.20.0.10"]' }}
           TF_VAR_lb_host: ${{ vars.LB_HOST || '127.0.0.1' }}
-          TF_VAR_ansible_user: ${{ vars.ANSIBLE_USER || 'ubuntu' }}
-          TF_VAR_ansible_connection: ${{ vars.ANSIBLE_CONNECTION || 'local' }}
+          TF_VAR_ansible_user: ${{ vars.ANSIBLE_USER || 'ansible' }}
+          TF_VAR_ansible_ssh_private_key: ${{ vars.ANSIBLE_SSH_KEY_PATH || './ssh_keys/ansible_ed25519' }}
+          TF_VAR_ansible_ssh_port: ${{ vars.ANSIBLE_SSH_PORT || '2222' }}
+          TF_VAR_windows_host: ${{ vars.WINDOWS_HOST || '192.168.56.10' }}
+          TF_VAR_windows_user: ${{ vars.WINDOWS_USER || 'Administrator' }}
+          TF_VAR_windows_password: ${{ secrets.WINDOWS_PASSWORD }}
+          TF_VAR_winrm_port: ${{ vars.WINRM_PORT || '5985' }}
 
       - name: Upload inventory artifact
         uses: actions/upload-artifact@v4
@@ -40,10 +47,40 @@ jobs:
           name: ansible-inventory
           path: ansible/inventory.ini
 
-  ansible:
-    name: Deploy nginx + HTML page
+  # ---------------------------------------------------------------------------
+  # Stage 2 – Docker: start ubuntu-target container
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Start Ubuntu Target Container
     runs-on: self-hosted
-    needs: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SSH keys (if missing)
+        run: bash docker/gen-keys.sh
+
+      - name: Start ubuntu-target container
+        working-directory: docker
+        run: docker compose up -d --build
+
+      - name: Wait for SSH to be ready
+        run: |
+          for i in $(seq 1 15); do
+            ssh -o StrictHostKeyChecking=no \
+                -o ConnectTimeout=3 \
+                -i ansible/ssh_keys/ansible_ed25519 \
+                -p 2222 ansible@127.0.0.1 "echo ready" && break
+            echo "Waiting for SSH... ($i/15)"
+            sleep 3
+          done
+
+  # ---------------------------------------------------------------------------
+  # Stage 3 – Ansible: deploy to all targets
+  # ---------------------------------------------------------------------------
+  ansible:
+    name: Deploy to Linux + Windows
+    runs-on: self-hosted
+    needs: [terraform, docker]
     steps:
       - uses: actions/checkout@v4
 
@@ -53,12 +90,13 @@ jobs:
           name: ansible-inventory
           path: ansible/
 
-      - name: Ensure Ansible is installed
+      - name: Ensure Ansible + WinRM deps are installed
         run: |
           if ! command -v ansible-playbook &> /dev/null; then
             sudo apt-get update -qq
             sudo apt-get install -y ansible
           fi
+          pip3 install --quiet pywinrm
           ansible --version
 
       - name: Run Ansible playbook
