@@ -6,3 +6,6 @@ ansible/inventory.ini
 .terraform.lock.hcl
 __pycache__/
 *.retry
+
+# GitHub Actions runner binary (never commit)
+actions-runner/
