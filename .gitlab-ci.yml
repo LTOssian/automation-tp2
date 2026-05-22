@@ -1,0 +1,41 @@
+stages:
+  - terraform
+  - ansible
+
+variables:
+  TF_VAR_ansible_host: "127.0.0.1"
+  TF_VAR_ansible_user: "ubuntu"
+  TF_VAR_ansible_connection: "local"
+
+# ---------------------------------------------------------------------------
+# Stage 1 – Terraform: generate Ansible inventory
+# ---------------------------------------------------------------------------
+terraform:
+  stage: terraform
+  tags:
+    - custom-local-runner          # forces use of YOUR custom runner
+  image: hashicorp/terraform:latest
+  script:
+    - cd terraform
+    - terraform init
+    - terraform validate
+    - terraform apply -auto-approve
+  artifacts:
+    paths:
+      - ansible/inventory.ini
+    expire_in: 1 hour
+
+# ---------------------------------------------------------------------------
+# Stage 2 – Ansible: deploy nginx + HTML page
+# ---------------------------------------------------------------------------
+ansible:
+  stage: ansible
+  tags:
+    - custom-local-runner
+  image: cytopia/ansible:latest
+  dependencies:
+    - terraform
+  script:
+    - cd ansible
+    - ansible --version
+    - ansible-playbook -i inventory.ini site.yml

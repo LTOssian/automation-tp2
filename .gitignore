@@ -1,0 +1,8 @@
+# Generated files
+ansible/inventory.ini
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+__pycache__/
+*.retry
