@@ -3,7 +3,12 @@
 # Do NOT edit manually; re-run `terraform apply` to regenerate.
 
 [webservers]
-${host} ansible_user=${user} ansible_connection=${connection}
+%{ for idx, h in web_hosts ~}
+${h} ansible_user=${user} ansible_connection=${connection} server_id=${idx + 1}
+%{ endfor ~}
+
+[loadbalancer]
+${lb_host} ansible_user=${user} ansible_connection=${connection}
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

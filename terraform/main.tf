@@ -5,8 +5,14 @@ terraform {
 # ---------------------------------------------------------------------------
 # Variables
 # ---------------------------------------------------------------------------
-variable "ansible_host" {
-  description = "IP / hostname of the target node"
+variable "web_hosts" {
+  description = "List of web server IPs"
+  type        = list(string)
+  default     = ["127.0.0.1"]
+}
+
+variable "lb_host" {
+  description = "Load balancer IP / hostname"
   default     = "127.0.0.1"
 }
 
@@ -21,11 +27,12 @@ variable "ansible_connection" {
 }
 
 # ---------------------------------------------------------------------------
-# Generate Ansible inventory using the Jinja2-like template
+# Generate Ansible inventory using the template
 # ---------------------------------------------------------------------------
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.tpl", {
-    host       = var.ansible_host
+    web_hosts  = var.web_hosts
+    lb_host    = var.lb_host
     user       = var.ansible_user
     connection = var.ansible_connection
   })

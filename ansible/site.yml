@@ -20,3 +20,10 @@
   become: true
   roles:
     - nginx
+
+# ---------------------------------------------------------------------------
+- name: Configure nginx load balancer
+  hosts: loadbalancer
+  become: true
+  roles:
+    - loadbalancer
