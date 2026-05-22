@@ -1,0 +1,56 @@
+name: Deploy nginx with Terraform + Ansible
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    name: Generate Ansible Inventory
+    runs-on: self-hosted          # your local runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_ansible_host: ${{ vars.ANSIBLE_HOST || '127.0.0.1' }}
+          TF_VAR_ansible_user: ${{ vars.ANSIBLE_USER || 'ubuntu' }}
+          TF_VAR_ansible_connection: ${{ vars.ANSIBLE_CONNECTION || 'local' }}
+
+      - name: Upload inventory artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-inventory
+          path: ansible/inventory.ini
+
+  ansible:
+    name: Deploy nginx + HTML page
+    runs-on: self-hosted
+    needs: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download inventory artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ansible-inventory
+          path: ansible/
+
+      - name: Run Ansible playbook
+        working-directory: ansible
+        run: ansible-playbook -i inventory.ini site.yml
