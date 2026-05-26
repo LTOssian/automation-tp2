@@ -1,0 +1,37 @@
+---
+# Timezone management role
+# Sets timezone to Europe/Paris, verifies, then switches to Africa/Abidjan (GMT)
+
+- name: Set timezone to Europe/Paris
+  community.general.timezone:
+    name: Europe/Paris
+
+- name: Verify timezone is Europe/Paris
+  ansible.builtin.command: timedatectl show --property=Timezone --value
+  register: tz_paris
+  changed_when: false
+
+- name: Assert timezone is Europe/Paris
+  ansible.builtin.assert:
+    that: tz_paris.stdout == "Europe/Paris"
+    fail_msg: "Timezone was NOT set to Europe/Paris (got: {{ tz_paris.stdout }})"
+    success_msg: "Timezone confirmed: {{ tz_paris.stdout }}"
+
+- name: Switch timezone to Africa/Abidjan (GMT)
+  community.general.timezone:
+    name: Africa/Abidjan
+
+- name: Verify timezone is Africa/Abidjan
+  ansible.builtin.command: timedatectl show --property=Timezone --value
+  register: tz_abidjan
+  changed_when: false
+
+- name: Assert timezone is Africa/Abidjan
+  ansible.builtin.assert:
+    that: tz_abidjan.stdout == "Africa/Abidjan"
+    fail_msg: "Timezone was NOT set to Africa/Abidjan (got: {{ tz_abidjan.stdout }})"
+    success_msg: "Timezone confirmed: {{ tz_abidjan.stdout }}"
+
+- name: Display final timezone
+  ansible.builtin.debug:
+    msg: "Final timezone on {{ inventory_hostname }}: {{ tz_abidjan.stdout }}"

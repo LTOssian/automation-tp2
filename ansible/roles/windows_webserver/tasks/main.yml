@@ -1,37 +1,31 @@
 ---
-- name: Gather facts (WinRM connectivity check)
-  ansible.windows.win_ping:
+# Windows timezone stub
+# A real Windows VM could not be provisioned due to ARM (Apple Silicon) +
+# storage constraints (11 GB free vs ~20 GB required).
+# This stub documents the intended workflow and fails gracefully.
+#
+# On a real Windows node with WinRM enabled, these tasks would run:
+#
+#   - name: Set timezone to Europe/Paris
+#     community.windows.win_timezone:
+#       timezone: "Romance Standard Time"
+#
+#   - name: Verify timezone
+#     ansible.windows.win_shell: (Get-TimeZone).Id
+#     register: tz_result
+#
+#   - name: Set timezone to Africa/Abidjan (GMT Standard Time)
+#     community.windows.win_timezone:
+#       timezone: "GMT Standard Time"
+#
+# To enable: set WINDOWS_HOST in GitHub Actions variables and ensure
+# WinRM is configured on the target (see docs/02-runner-setup.md).
 
-- name: Enable IIS Web Server feature
-  ansible.windows.win_feature:
-    name:
-      - Web-Server           # IIS core
-      - Web-Default-Doc
-      - Web-Static-Content
-    state: present
-  register: iis_install
-
-- name: Reboot if IIS install requires it
-  ansible.windows.win_reboot:
-  when: iis_install.reboot_required
-
-- name: Ensure IIS service (W3SVC) is running
-  ansible.windows.win_service:
-    name: W3SVC
-    state: started
-    start_mode: auto
-
-- name: Deploy HTML page to IIS default site
-  ansible.windows.win_copy:
-    src: index.html
-    dest: C:\inetpub\wwwroot\index.html
-
-- name: Verify page is served locally
-  ansible.windows.win_uri:
-    url: http://localhost/index.html
-    status_code: 200
-  register: iis_check
-
-- name: Show IIS health check result
+- name: Windows node skipped — ARM/storage limitation documented
   ansible.builtin.debug:
-    msg: "IIS responded with HTTP {{ iis_check.status_code }}"
+    msg: >
+      Windows VM provisioning was skipped on this host.
+      Reason: Apple Silicon (ARM64) Mac with insufficient disk space (~11 GB free,
+      Windows Server requires ~20 GB minimum).
+      The WinRM configuration and timezone automation code is documented in
+      ansible/roles/windows_webserver/ and would execute on a reachable Windows node.

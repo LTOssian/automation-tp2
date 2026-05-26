@@ -16,11 +16,18 @@
           | IPv4: {{ ansible_default_ipv4.address | default('N/A') }}
 
 # ---------------------------------------------------------------------------
-- name: Deploy nginx + HTML page on Linux web servers (Docker)
+- name: Deploy nginx + HTML page on Linux web servers
   hosts: webservers
   become: true
   roles:
     - nginx
+
+# ---------------------------------------------------------------------------
+- name: Timezone management on Linux nodes (Europe/Paris → Africa/Abidjan)
+  hosts: webservers
+  become: true
+  roles:
+    - timezone
 
 # ---------------------------------------------------------------------------
 - name: Configure nginx load balancer
@@ -30,7 +37,7 @@
     - loadbalancer
 
 # ---------------------------------------------------------------------------
-- name: Deploy IIS + HTML page on Windows VM
+- name: Windows node management (WinRM — stubbed, see role for details)
   hosts: windows
   gather_facts: false
   roles:
