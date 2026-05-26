@@ -6,7 +6,7 @@
 # ---------------------------------------------------------------------------
 [webservers]
 %{ for idx, h in web_hosts ~}
-${h} ansible_user=${ansible_user} ansible_ssh_private_key_file=${ansible_ssh_private_key} ansible_port=${ansible_ssh_port} server_id=${idx + 1}
+${h} ansible_user=${ansible_user} ansible_connection=ssh ansible_ssh_private_key_file=${ansible_ssh_private_key} ansible_port=${ansible_ssh_port} server_id=${idx + 1}
 %{ endfor ~}
 
 # ---------------------------------------------------------------------------
