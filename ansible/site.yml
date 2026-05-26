@@ -40,5 +40,6 @@
 - name: Windows node management (WinRM — stubbed, see role for details)
   hosts: windows
   gather_facts: false
+  ignore_unreachable: true
   roles:
     - windows_webserver
