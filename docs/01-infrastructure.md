@@ -1,48 +1,49 @@
-# 01 – Infrastructure Overview
+# 01 – Vue d'ensemble de l'infrastructure
 
 ## Architecture
 
 ```
                     ┌─────────────────────────────┐
-                    │   GitHub Actions Pipeline    │
-                    │   (self-hosted runner)       │
+                    │   Pipeline GitHub Actions    │
+                    │   (runner auto-hébergé)      │
                     └────────────┬────────────────┘
                                  │
                ┌─────────────────▼──────────────────┐
-               │         Ansible Controller          │
-               │  (runner machine – runs playbooks)  │
+               │         Contrôleur Ansible          │
+               │  (machine du runner – exécute les   │
+               │   playbooks)                        │
                └───────┬──────────────┬─────────────┘
                        │              │
           ┌────────────▼───┐   ┌──────▼───────────┐
-          │  Load Balancer │   │   Web Server(s)   │
-          │  nginx (LB)    │──▶│   nginx + HTML    │
+          │  Load Balancer │   │  Serveur(s) Web   │
+          │  nginx (LB)    │──▶│  nginx + HTML     │
           └────────────────┘   └──────────────────┘
 ```
 
-## Components
+## Composants
 
-| Component | Role |
+| Composant | Rôle |
 |---|---|
-| GitHub Actions | CI/CD orchestration |
-| Self-hosted runner | Executes pipeline jobs locally |
-| Terraform | Generates `ansible/inventory.ini` from template |
-| Ansible Controller | Runs playbooks against target hosts |
-| nginx (webservers) | Serves the static HTML page |
-| nginx (loadbalancer) | Distributes traffic across web servers |
+| GitHub Actions | Orchestration CI/CD |
+| Runner auto-hébergé | Exécute les jobs du pipeline en local |
+| Terraform | Génère `ansible/inventory.ini` depuis un template |
+| Contrôleur Ansible | Lance les playbooks sur les hôtes cibles |
+| nginx (webservers) | Sert la page HTML statique |
+| nginx (loadbalancer) | Distribue le trafic entre les serveurs web |
 
-## Host Groups (inventory)
+## Groupes d'hôtes (inventaire)
 
-| Group | Default IP | Purpose |
+| Groupe | IP par défaut | Rôle |
 |---|---|---|
-| `webservers` | `127.0.0.1` | nginx + HTML deployment targets |
-| `loadbalancer` | `127.0.0.1` | nginx reverse proxy / upstream |
+| `webservers` | `127.0.0.1` | Cibles de déploiement nginx + HTML |
+| `loadbalancer` | `127.0.0.1` | Reverse proxy nginx / upstream |
 
-## Scaling
+## Mise à l'échelle
 
-To add more web servers, set the `WEB_HOSTS` GitHub Actions variable to a JSON array:
+Pour ajouter des serveurs web, renseigner la variable GitHub Actions `WEB_HOSTS` avec un tableau JSON :
 
 ```
 ["192.168.1.10", "192.168.1.11", "192.168.1.12"]
 ```
 
-Terraform regenerates the inventory and Ansible reconfigures both the web servers and the load balancer upstream block automatically.
+Terraform régénère l'inventaire et Ansible reconfigure automatiquement les serveurs web ainsi que le bloc upstream du load balancer.

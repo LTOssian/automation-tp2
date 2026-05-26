@@ -1,61 +1,61 @@
-# 02 – GitHub Actions Self-Hosted Runner Setup
+# 02 – Configuration du Runner Auto-Hébergé GitHub Actions
 
-## Why a self-hosted runner?
+## Pourquoi un runner auto-hébergé ?
 
-A self-hosted runner ensures the pipeline executes on **your own machine** (or VM), giving you:
-- Control over the environment (tools, network, sudo access)
-- Proof that the pipeline did not run on GitHub's shared infrastructure
+Un runner auto-hébergé garantit que le pipeline s'exécute sur **votre propre machine** (ou VM), ce qui permet de :
+- Contrôler l'environnement (outils, réseau, accès sudo)
+- Prouver que le pipeline ne tourne pas sur l'infrastructure partagée de GitHub
 
-## Registration Steps
+## Étapes d'enregistrement
 
-### 1. Navigate to runner settings
+### 1. Accéder aux paramètres du runner
 
 `https://github.com/LTOssian/automation-tp2` → **Settings → Actions → Runners → New self-hosted runner**
 
-### 2. Download & configure
+### 2. Téléchargement et configuration
 
 ```bash
 mkdir ~/actions-runner && cd ~/actions-runner
-# Download (use the exact URL shown on GitHub – it includes your OS/arch)
-curl -o actions-runner.tar.gz -L <URL_FROM_GITHUB>
+# Télécharger (utiliser l'URL exacte affichée sur GitHub – inclut l'OS/architecture)
+curl -o actions-runner.tar.gz -L <URL_DEPUIS_GITHUB>
 tar xzf actions-runner.tar.gz
 
-# Register (token is shown on GitHub – valid 1h)
+# Enregistrer (le token est affiché sur GitHub – valide 1h)
 ./config.sh \
   --url https://github.com/LTOssian/automation-tp2 \
-  --token <TOKEN_FROM_GITHUB>
+  --token <TOKEN_DEPUIS_GITHUB>
 ```
 
-### 3. Start the runner
+### 3. Démarrer le runner
 
 ```bash
-# Temporary / testing
+# Temporaire / test
 ./run.sh
 
-# Persistent – systemd service (recommended)
+# Persistant – service systemd (recommandé)
 sudo ./svc.sh install
 sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
-### 4. Verify
+### 4. Vérification
 
-**Settings → Actions → Runners** → runner appears as **Idle** (green dot).
+**Settings → Actions → Runners** → le runner apparaît avec le statut **Idle** (point vert).
 
-## How the pipeline uses it
+## Utilisation dans le pipeline
 
-In `.github/workflows/deploy.yml` every job declares:
+Dans `.github/workflows/deploy.yml`, chaque job déclare :
 
 ```yaml
 runs-on: self-hosted
 ```
 
-This ensures GitHub will never fall back to a shared hosted runner.
+Cela garantit que GitHub ne basculera jamais sur un runner partagé hébergé.
 
-## Prerequisites on the runner machine
+## Prérequis sur la machine du runner
 
-| Tool | Install command |
+| Outil | Commande d'installation |
 |---|---|
 | Ansible | `sudo apt install ansible` |
-| Terraform | See [terraform.io/install](https://developer.hashicorp.com/terraform/install) |
-| sudo | Required for `become: true` in playbooks |
+| Terraform | Voir [terraform.io/install](https://developer.hashicorp.com/terraform/install) |
+| sudo | Requis pour `become: true` dans les playbooks |

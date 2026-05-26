@@ -1,67 +1,82 @@
-# TP2 – DevOps Infrastructure & Automation with Ansible & Terraform
+# TP2 – Infrastructure DevOps & Automatisation avec Ansible et Terraform
 
-**School:** EFREI | **Class:** M1-DEV1 2026 | **Course:** DevOps – Culture, Practices and Tools
-
----
-
-## Overview
-
-This project automates the deployment of an **nginx web server** serving a static HTML page,
-using a fully automated pipeline:
-
-```
-GitLab CI/CD (custom runner)
-    ├── Stage 1 – Terraform   →  generates Ansible inventory.ini from a Jinja2-like template
-    └── Stage 2 – Ansible     →  installs nginx & deploys the HTML page on target hosts
-```
+**École :** EFREI | **Promotion :** M1-DEV1 2026 | **Cours :** DevOps – Culture, Pratiques et Outils  
+**Professeur :** Issiaka KONE
 
 ---
 
-## Repository Structure
+## Présentation
+
+Ce projet automatise le déploiement d'un **serveur web nginx** servant une page HTML statique,
+via un pipeline entièrement automatisé :
+
+```
+GitHub Actions (runner auto-hébergé)
+    ├── Job 1 – Terraform   →  génère ansible/inventory.ini depuis un template Jinja2-like
+    ├── Job 2 – Docker      →  construit et démarre le conteneur Ubuntu cible
+    └── Job 3 – Ansible     →  installe nginx & déploie la page HTML sur les hôtes cibles
+```
+
+---
+
+## Documentation
+
+La documentation complète est disponible dans le dossier [`docs/`](docs/README.md) :
+
+| Section | Fichier |
+|---|---|
+| Vue d'ensemble de l'architecture | [docs/01-infrastructure.md](docs/01-infrastructure.md) |
+| Runner auto-hébergé | [docs/02-runner-setup.md](docs/02-runner-setup.md) |
+| Terraform & inventaire dynamique | [docs/03-terraform.md](docs/03-terraform.md) |
+| Playbook Ansible & rôles | [docs/04-ansible.md](docs/04-ansible.md) |
+| Load balancer nginx | [docs/05-load-balancing.md](docs/05-load-balancing.md) |
+| Pipeline CI/CD | [docs/06-pipeline.md](docs/06-pipeline.md) |
+| Tentatives VM Windows | [docs/07-windows-vm-attempts.md](docs/07-windows-vm-attempts.md) |
+
+---
+
+## Structure du dépôt
 
 ```
 TP2/
-├── .gitlab-ci.yml              # CI/CD pipeline definition
+├── .github/workflows/deploy.yml  # Pipeline GitHub Actions (3 jobs)
 ├── terraform/
-│   ├── main.tf                 # Terraform config – generates inventory via templatefile()
-│   └── inventory.tpl           # Jinja2-style template for Ansible inventory
+│   ├── main.tf                   # Config Terraform – génère l'inventaire via templatefile()
+│   └── inventory.tpl             # Template Jinja2-like pour l'inventaire Ansible
+├── docker/
+│   ├── docker-compose.yml        # Conteneur ubuntu-target (SSH + nginx)
+│   ├── gen-keys.sh               # Génère la paire de clés SSH ED25519
+│   └── ubuntu-target/            # Dockerfile + authorized_keys
 ├── ansible/
-│   ├── ansible.cfg             # Project-level Ansible configuration
-│   ├── site.yml                # Main playbook (facts + nginx deployment)
+│   ├── ansible.cfg               # Configuration Ansible du projet
+│   ├── site.yml                  # Playbook principal (5 plays)
 │   └── roles/
-│       └── nginx/
-│           ├── tasks/main.yml  # Install & configure nginx
-│           ├── handlers/main.yml
-│           └── files/index.html # Static HTML page served by nginx
-└── screenshots/                # Pipeline proof screenshots (see Delivery section)
+│       ├── nginx/                # Installe nginx + déploie la page HTML
+│       ├── timezone/             # Gestion du fuseau horaire (Linux, compatible Docker)
+│       ├── loadbalancer/         # Reverse proxy nginx sur le port 8081
+│       └── windows_webserver/    # Rôle Windows (stub documenté)
+├── docs/                         # Documentation complète du TP
+└── screenshots/                  # Captures d'écran du pipeline
 ```
 
 ---
 
 ## Architecture
 
-| Component | Technology | Role |
+| Composant | Technologie | Rôle |
 |---|---|---|
-| CI/CD Engine | GitLab CI/CD | Orchestrates pipeline stages |
-| Custom Runner | GitLab Runner (local) | Exclusive pipeline executor |
-| IaC | Terraform + `templatefile()` | Generates `ansible/inventory.ini` |
-| Configuration Mgmt | Ansible | Installs nginx, deploys HTML |
-| Web Server | nginx | Serves the static HTML page |
+| CI/CD | GitHub Actions | Orchestre les jobs du pipeline |
+| Runner | Runner auto-hébergé (local) | Exécuteur exclusif du pipeline |
+| IaC | Terraform + `templatefile()` | Génère `ansible/inventory.ini` |
+| Gestion de config | Ansible | Installe nginx, déploie le HTML, gère le fuseau horaire |
+| Serveur web | nginx (Docker) | Sert la page HTML statique (port 8080) |
+| Load balancer | nginx (Docker) | Distribue le trafic (port 8081) |
 
 ---
 
-## Prerequisites
+## Exécution en local
 
-- GitLab Runner registered and tagged `custom-local-runner`
-- Terraform ≥ 1.0 installed on the runner
-- Ansible ≥ 2.12 installed on the runner
-- Target host accessible via SSH (or `local` connection for localhost)
-
----
-
-## How to Run Locally
-
-### 1. Generate the inventory with Terraform
+### 1. Générer l'inventaire avec Terraform
 
 ```bash
 cd terraform
@@ -69,42 +84,33 @@ terraform init
 terraform apply -auto-approve
 ```
 
-This creates `ansible/inventory.ini` from `inventory.tpl`.
+### 2. Démarrer le conteneur cible
 
-### 2. Run the Ansible playbook
+```bash
+cd docker
+bash gen-keys.sh
+docker compose up -d --build
+```
+
+### 3. Lancer le playbook Ansible
 
 ```bash
 cd ansible
 ansible-playbook -i inventory.ini site.yml
 ```
 
-### 3. Verify
+### 4. Vérifier
 
-Open `http://<target-host>` in your browser – you should see the TP2 landing page.
+```bash
+curl http://127.0.0.1:8080        # page nginx
+curl http://127.0.0.1:8081/health # load balancer → OK
+```
 
 ---
 
-## Pipeline Execution
+## Prérequis
 
-Push to `main` triggers the pipeline automatically:
-
-```
-push → GitLab → custom-local-runner
-                    ├── terraform job  (init → validate → apply)
-                    └── ansible job    (ansible-playbook site.yml)
-```
-
-> **Note:** The `tags: [custom-local-runner]` directive in `.gitlab-ci.yml` ensures the pipeline
-> runs **only** on the local custom runner, never on shared GitLab-hosted runners.
-
----
-
-## Customisation
-
-| Variable | Default | Description |
-|---|---|---|
-| `TF_VAR_ansible_host` | `127.0.0.1` | Target host IP/hostname |
-| `TF_VAR_ansible_user` | `ubuntu` | SSH user |
-| `TF_VAR_ansible_connection` | `local` | Ansible connection type |
-
-Set these as GitLab CI/CD variables in **Settings → CI/CD → Variables**.
+- Runner GitHub Actions auto-hébergé enregistré sur ce dépôt
+- Terraform ≥ 1.0 installé sur la machine du runner
+- Ansible ≥ 2.12 installé sur la machine du runner
+- Docker + Docker Compose installés sur la machine du runner

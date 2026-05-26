@@ -1,51 +1,51 @@
-# 07 – Windows VM Setup Attempts & Limitations
+# 07 – Tentatives de Provisionnement de la VM Windows
 
-## Objective
+## Objectif
 
-The TP requires a Windows node managed via WinRM/WinRMS for remote timezone automation.
-This document details every approach attempted and why each failed on this specific hardware.
+Le TP requiert un nœud Windows géré via WinRM pour l'automatisation du fuseau horaire.
+Ce document détaille chaque approche tentée et les raisons de l'échec sur ce matériel spécifique.
 
 ---
 
-## Hardware Context
+## Contexte matériel
 
-| Property | Value |
+| Propriété | Valeur |
 |---|---|
-| Machine | Apple Silicon Mac (ARM64 / M-series chip) |
-| Free disk space | ~11 GB |
-| Hypervisor used | UTM (QEMU-based) |
+| Machine | Apple Silicon Mac (ARM64 / puce M-series) |
+| Espace disque libre | ~11 Go |
+| Hyperviseur utilisé | UTM (basé sur QEMU) |
 
 ---
 
-## Attempt 1 — x86 Windows Server 2022 ISO via UTM (Emulation)
+## Tentative 1 — ISO Windows Server 2022 x86 via UTM (émulation)
 
-### What we tried
-Downloaded the official **Windows Server 2022 Evaluation ISO** (x86_64, French build):
+### Ce qui a été tenté
+Téléchargement de l'**ISO officielle Windows Server 2022 Evaluation** (x86_64, build française) :
 ```
 26100.32230.260111-0550.lt_release_svc_refresh_SERVER_EVAL_x64FRE_fr-fr
 ```
-Created a UTM VM and attempted to boot it.
+Création d'une VM UTM et tentative de démarrage.
 
-### Why it failed
-The Mac is **ARM64**. UTM can emulate x86 via QEMU TCG but:
-- The emulated shell had **no working commands** — the x86 instruction translation was too broken to produce a usable environment
-- Boot was partial: dropped into a non-functional CMD-like shell with no `ipconfig`, no `powershell`, nothing
+### Raison de l'échec
+Le Mac est **ARM64**. UTM peut émuler x86 via QEMU TCG, mais :
+- Le shell émulé n'avait **aucune commande fonctionnelle** — la traduction des instructions x86 était trop instable pour produire un environnement utilisable
+- Le démarrage était partiel : la VM tombait dans un shell CMD non fonctionnel, sans `ipconfig` ni `powershell`
 
-**Root cause:** x86 emulation on Apple Silicon is not production-grade for Windows Server. The CPU instruction set mismatch makes the OS environment unreliable.
+**Cause racine :** L'émulation x86 sur Apple Silicon n'est pas adaptée à Windows Server. L'incompatibilité entre les jeux d'instructions rend l'OS inutilisable.
 
 ---
 
-## Attempt 2 — Native ARM64 Windows Server ISO via uupdump.net
+## Tentative 2 — ISO Windows Server ARM64 native via uupdump.net
 
-### What we tried
-Downloaded an ARM64 build script from **uupdump.net**:
+### Ce qui a été tenté
+Téléchargement d'un script de build ARM64 depuis **uupdump.net** :
 ```
 26100.8521_arm64_en-us_core_886b936b_convert
 ```
-Attempted to build the ISO on macOS using the provided `uup_download_macos.sh` script.
+Tentative de construction de l'ISO sur macOS avec le script `uup_download_macos.sh` fourni.
 
-### Why it failed
-The script requires `chntpw`, which depends on `openssl@1.0`. This library **does not build on Apple Silicon**:
+### Raison de l'échec
+Le script nécessite `chntpw`, qui dépend de `openssl@1.0`. Cette bibliothèque **ne compile pas sur Apple Silicon** :
 
 ```
 Error: openssl@1.0 build fails on Apple Silicon (Mac M4)
@@ -53,10 +53,10 @@ EC point validation errors during tests
 make[1]: *** [test_ec] Error 1
 ```
 
-This is a [known upstream issue](https://github.com/sidneys/homebrew-homebrew/issues/37) with no fix available.
+Il s'agit d'un [problème connu en amont](https://github.com/sidneys/homebrew-homebrew/issues/37) sans correctif disponible.
 
-### Workaround — Build ISO inside Docker
-Since the macOS toolchain was broken, we used a Linux Docker container (ARM64 Ubuntu) which has working `chntpw` packages:
+### Contournement — Construction de l'ISO dans Docker
+La chaîne d'outils macOS étant cassée, un conteneur Docker Linux (ARM64 Ubuntu) a été utilisé, qui dispose de packages `chntpw` fonctionnels :
 
 ```bash
 docker run --rm \
@@ -68,61 +68,61 @@ docker run --rm \
   "
 ```
 
-This **successfully built** the ISO:
+L'ISO a été **construite avec succès** :
 ```
-26100.1_CORE_ARM64_EN-US.ISO  (3.9 GB)
+26100.1_CORE_ARM64_EN-US.ISO  (3,9 Go)
 ```
 
 ---
 
-## Attempt 3 — Boot ARM64 ISO in UTM
+## Tentative 3 — Démarrage de l'ISO ARM64 dans UTM
 
-### What we tried
-Created a new UTM VM (Virtualize mode, not Emulate) with:
-- RAM: 2048 MB | CPU: 2 cores | Disk: 15 GB
-- Network: Shared (NAT)
-- ISO: `26100.1_CORE_ARM64_EN-US.ISO`
+### Ce qui a été tenté
+Création d'une nouvelle VM UTM (mode Virtualiser, pas Émuler) avec :
+- RAM : 2048 Mo | CPU : 2 cœurs | Disque : 15 Go
+- Réseau : Partagé (NAT)
+- ISO : `26100.1_CORE_ARM64_EN-US.ISO`
 
-### Problem 1 — EFI Shell instead of installer
-The VM dropped into the **UEFI Interactive Shell v2.2** instead of booting the installer.
+### Problème 1 — Shell EFI au lieu de l'installeur
+La VM démarrait dans le **Shell Interactif UEFI v2.2** au lieu de lancer l'installeur.
 
-**Fix:** Manually launched the bootloader from the EFI shell:
+**Correctif :** Lancement manuel du bootloader depuis le shell EFI :
 ```
 FS0:
 EFI/BOOT/BOOTAA64.EFI
 ```
 
-Then pressed a key immediately when prompted:
+Puis appui rapide sur une touche au message :
 ```
 Press any key to boot from cd or dvd...
 ```
 
-This successfully launched the Windows installer.
+L'installeur Windows a ensuite démarré correctement.
 
-### Problem 2 — Insufficient disk space
-During installation, Windows Server reported:
+### Problème 2 — Espace disque insuffisant
+Pendant l'installation, Windows Server a signalé :
 
-> **"Cannot be installed on this drive — requires 52 GB or more"**
+> **« Impossible d'installer sur ce lecteur — nécessite 52 Go ou plus »**
 
-The VM disk was 15 GB. Increasing it to 60 GB was not possible because the Mac only had **~11 GB of free space** remaining.
+Le disque VM était de 15 Go. L'augmenter à 60 Go était impossible car le Mac ne disposait que de **~11 Go d'espace libre**.
 
-**Root cause:** Disk space exhausted — 11 GB free on host < 20 GB minimum required for Windows Server Core installation.
+**Cause racine :** Espace disque épuisé — 11 Go libres sur l'hôte < 20 Go minimum requis pour l'installation de Windows Server Core.
 
 ---
 
-## Attempt 4 — Azure Cloud VM (Windows Server 2022 Datacenter)
+## Tentative 4 — VM Azure Cloud (Windows Server 2022 Datacenter)
 
-### Context
+### Contexte
 
-After exhausting local options, we pivoted to **Azure for Students** (free credit, subscription `2e32bf2a-6410-4934-8182-fa5199a76f37`, tenant `efrei.net`) to provision a cloud-hosted Windows VM that Ansible could reach over WinRM from the self-hosted runner.
+Après avoir épuisé les options locales, nous nous sommes tournés vers **Azure for Students** (crédit gratuit, abonnement `2e32bf2a-6410-4934-8182-fa5199a76f37`, tenant `efrei.net`) pour provisionner une VM Windows cloud qu'Ansible pourrait atteindre via WinRM depuis le runner auto-hébergé.
 
-### Setup completed
+### Configuration réalisée
 
-- Azure CLI installed via `pip3 install azure-cli`
-- Authenticated with `az login --allow-no-subscriptions` (required because the student subscription doesn't surface via standard login)
-- Resource group `devops-tp2-rg` created successfully in `francecentral`
+- Azure CLI installé via `pip3 install azure-cli`
+- Authentification avec `az login --allow-no-subscriptions` (requis car l'abonnement étudiant n'apparaît pas lors du login standard)
+- Groupe de ressources `devops-tp2-rg` créé avec succès dans `francecentral`
 
-### Problem 1 — Standard_B1s capacity exhausted in francecentral
+### Problème 1 — Capacité Standard_B1s épuisée dans francecentral
 
 ```
 (SkuNotAvailable) The requested VM size for resource
@@ -130,11 +130,11 @@ After exhausting local options, we pivoted to **Azure for Students** (free credi
 is currently not available in location 'FranceCentral'.
 ```
 
-`Standard_B2s` produced the same error. B-series is the only family with non-zero quota on Azure for Students, and Azure's physical capacity in `francecentral` was exhausted at time of attempt.
+`Standard_B2s` produisait la même erreur. La série B est la seule famille avec un quota non nul sur Azure for Students, et la capacité physique Azure dans `francecentral` était épuisée au moment de la tentative.
 
-### Problem 2 — Region policy restricts deployment to francecentral only
+### Problème 2 — La politique Azure restreint le déploiement à francecentral
 
-Attempting other regions (`northeurope`, `eastus`, `westus2`, `westeurope`, `uksouth`, `australiaeast`, `japaneast`) produced:
+Tentatives dans d'autres régions (`northeurope`, `eastus`, `westus2`, `westeurope`, `uksouth`, `australiaeast`, `japaneast`) :
 
 ```
 (RequestDisallowedByAzure) Resource was disallowed by Azure:
@@ -142,55 +142,56 @@ This policy maintains a set of best available regions where your
 subscription can deploy resources.
 ```
 
-Only `francecentral`, `australiaeast`, and `southeastasia` accepted resource group creation. VM creation in `australiaeast` and `southeastasia` also returned `disallowed` for actual compute resources.
+Seules `francecentral`, `australiaeast` et `southeastasia` acceptaient la création de groupes de ressources. La création de VM dans `australiaeast` et `southeastasia` retournait également `disallowed` pour les ressources compute.
 
-### Problem 3 — Quota = 0 for all non-B VM families
+### Problème 3 — Quota = 0 pour toutes les familles non-B
 
-Testing other VM sizes in `francecentral`:
+Test d'autres tailles de VM dans `francecentral` :
 
 ```
 (QuotaExceeded) Current Limit: 0, Current Usage: 0, Additional Required: 2
 ```
 
-All DSv2, DSv3, DSv4, DSv5, and other families have a hard quota of **0 vCores** on the Azure for Students subscription. Only the B-series had a quota above 0, but no physical capacity was available.
+Toutes les familles DSv2, DSv3, DSv4, DSv5 et autres ont un quota fixe de **0 vCores** sur l'abonnement Azure for Students. Seule la série B disposait d'un quota supérieur à 0, mais aucune capacité physique n'était disponible.
 
-### Result
+### Résultat
 
-Azure VM provisioning is impossible on this subscription in any reachable region:
+Le provisionnement d'une VM Azure est impossible sur cet abonnement dans toute région accessible :
 
-| Family | francecentral | australiaeast | southeastasia |
+| Famille | francecentral | australiaeast | southeastasia |
 |---|---|---|---|
-| Standard_B* | SkuNotAvailable (capacity) | Disallowed | Disallowed |
-| Standard_DS* | QuotaExceeded (limit=0) | Disallowed | Disallowed |
-| Standard_D*v3+ | QuotaExceeded (limit=0) | Disallowed | Disallowed |
+| Standard_B* | SkuNotAvailable (capacité) | Interdit | Interdit |
+| Standard_DS* | QuotaExceeded (limite=0) | Interdit | Interdit |
+| Standard_D*v3+ | QuotaExceeded (limite=0) | Interdit | Interdit |
 
-This is a known constraint of Azure for Students free subscriptions — compute quota is minimal and capacity in European regions is heavily contested.
+Il s'agit d'une contrainte connue des abonnements gratuits Azure for Students — le quota compute est minimal et la capacité dans les régions européennes est fortement sollicitée.
 
 ---
 
 ## Conclusion
 
-| Attempt | Blocker |
+| Tentative | Bloquant |
 |---|---|
-| x86 ISO emulation on ARM | CPU architecture mismatch — unusable shell |
-| macOS ISO build toolchain | `openssl@1.0` fails to compile on Apple Silicon |
-| Docker-built ARM ISO | Success — ISO built correctly |
-| ARM ISO boot in UTM | EFI workaround needed but worked |
-| Windows installation | Host disk space exhausted (11 GB free vs 52 GB required) |
+| Émulation x86 ISO sur ARM | Incompatibilité CPU — shell inutilisable |
+| Chaîne d'outils ISO macOS | `openssl@1.0` ne compile pas sur Apple Silicon |
+| ISO ARM construite via Docker | Succès — ISO construite correctement |
+| Démarrage ISO ARM dans UTM | Contournement EFI nécessaire mais fonctionnel |
+| Installation Windows | Espace disque épuisé (11 Go libres vs 52 Go requis) |
+| VM Azure cloud | Quota 0 vCores + capacité B-series épuisée dans toutes les régions accessibles |
 
-## What the Windows automation would have done
+## Ce qu'aurait fait l'automatisation Windows
 
-Had the VM been provisioned, the Ansible play would have:
+Si la VM avait été provisionnée, le play Ansible aurait :
 
-1. Connected via **WinRM HTTP** (port 5985, NTLM auth)
-2. Run `community.windows.win_timezone` to set `Romance Standard Time` (Europe/Paris)
-3. Verified via `win_shell: (Get-TimeZone).Id`
-4. Switched to `GMT Standard Time` (Africa/Abidjan)
-5. Verified again
+1. Connecté via **WinRM HTTP** (port 5985, authentification NTLM)
+2. Exécuté `community.windows.win_timezone` pour définir `Romance Standard Time` (Europe/Paris)
+3. Vérifié via `win_shell: (Get-TimeZone).Id`
+4. Basculé sur `GMT Standard Time` (Africa/Abidjan)
+5. Vérifié à nouveau
 
-The full code is preserved in `ansible/roles/windows_webserver/tasks/main.yml`.
+Le code complet est conservé dans `ansible/roles/windows_webserver/tasks/main.yml`.
 
-### WinRM setup commands (for reference)
+### Commandes WinRM de configuration (pour référence)
 ```powershell
 winrm quickconfig -q
 winrm set winrm/config/service/auth '@{Basic="true"}'

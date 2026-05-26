@@ -1,12 +1,13 @@
-# Documentation – TP2 DevOps Infrastructure & Automation
+# Documentation – TP2 Infrastructure DevOps & Automatisation
 
-This folder contains detailed answers to each section of the practical work, organized by topic.
+Ce dossier contient les réponses détaillées à chaque section du travail pratique, organisées par thème.
 
-| File | Covers |
+| Fichier | Contenu |
 |---|---|
-| [01-infrastructure.md](01-infrastructure.md) | Architecture overview & VM setup |
-| [02-runner-setup.md](02-runner-setup.md) | GitHub Actions self-hosted runner setup |
-| [03-terraform.md](03-terraform.md) | Terraform IaC & dynamic inventory generation |
-| [04-ansible.md](04-ansible.md) | Ansible playbook, roles & automation |
-| [05-load-balancing.md](05-load-balancing.md) | nginx load balancer configuration |
-| [06-pipeline.md](06-pipeline.md) | Full CI/CD pipeline walkthrough |
+| [01-infrastructure.md](01-infrastructure.md) | Vue d'ensemble de l'architecture |
+| [02-runner-setup.md](02-runner-setup.md) | Configuration du runner auto-hébergé GitHub Actions |
+| [03-terraform.md](03-terraform.md) | IaC Terraform & génération dynamique de l'inventaire |
+| [04-ansible.md](04-ansible.md) | Playbook Ansible, rôles & automatisation |
+| [05-load-balancing.md](05-load-balancing.md) | Configuration du load balancer nginx |
+| [06-pipeline.md](06-pipeline.md) | Déroulement complet du pipeline CI/CD |
+| [07-windows-vm-attempts.md](07-windows-vm-attempts.md) | Tentatives de provisionnement Windows & limitations |

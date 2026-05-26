@@ -1,53 +1,53 @@
-# 04 – Ansible Playbook & Roles
+# 04 – Playbook Ansible & Rôles
 
-## Playbook structure
+## Structure du playbook
 
 ```
 ansible/
 ├── ansible.cfg
-├── site.yml                    # entry-point – five plays
+├── site.yml                    # point d'entrée – cinq plays
 └── roles/
-    ├── nginx/                  # installs nginx + deploys HTML page
-    ├── timezone/               # timezone automation (Linux)
-    ├── loadbalancer/           # nginx reverse proxy on port 8081
-    └── windows_webserver/      # Windows stub (see limitations)
+    ├── nginx/                  # installe nginx + déploie la page HTML
+    ├── timezone/               # gestion du fuseau horaire (Linux)
+    ├── loadbalancer/           # reverse proxy nginx sur le port 8081
+    └── windows_webserver/      # stub Windows (voir limitations)
 ```
 
-## Plays in `site.yml`
+## Plays dans `site.yml`
 
-### Play 1 – Controller fact gathering (localhost)
+### Play 1 – Collecte de faits sur le contrôleur (localhost)
 
-Displays OS, hostname and IPv4 of the Ansible controller.
+Affiche l'OS, le hostname et l'IPv4 du contrôleur Ansible.
 
-### Play 2 – nginx web servers
+### Play 2 – Serveurs web nginx
 
-Installs nginx and deploys the custom HTML page on all `[webservers]` hosts.
-nginx serves the page on **port 80**.
+Installe nginx et déploie la page HTML personnalisée sur tous les hôtes `[webservers]`.
+nginx sert la page sur le **port 80**.
 
-### Play 3 – Timezone management (Linux)
+### Play 3 – Gestion du fuseau horaire (Linux)
 
 ```yaml
-- name: Timezone management on Linux nodes
+- name: Gestion du fuseau horaire sur les nœuds Linux
   hosts: webservers
   become: true
   roles:
     - timezone
 ```
 
-The `timezone` role uses direct `/etc/timezone` + `/etc/localtime` file manipulation
-(no dependency on `hwclock` or `timedatectl`, which are unavailable inside Docker containers):
+Le rôle `timezone` utilise la manipulation directe des fichiers `/etc/timezone` + `/etc/localtime`
+(sans dépendance à `hwclock` ni `timedatectl`, non disponibles dans les conteneurs Docker) :
 
-1. Writes `Europe/Paris` to `/etc/timezone`, symlinks `/etc/localtime`
-2. Reads `/etc/timezone` and asserts it equals `Europe/Paris`
-3. Writes `Africa/Abidjan` to `/etc/timezone`, symlinks `/etc/localtime`
-4. Reads `/etc/timezone` and asserts it equals `Africa/Abidjan`
-5. Displays final timezone via `debug`
+1. Écrit `Europe/Paris` dans `/etc/timezone`, crée le lien symbolique `/etc/localtime`
+2. Lit `/etc/timezone` et vérifie que la valeur est bien `Europe/Paris`
+3. Écrit `Africa/Abidjan` dans `/etc/timezone`, met à jour le lien symbolique
+4. Lit `/etc/timezone` et vérifie que la valeur est bien `Africa/Abidjan`
+5. Affiche le fuseau horaire final via `debug`
 
 ### Play 4 – Load balancer
 
-Configures nginx as a reverse proxy with `least_conn` upstream across all webservers.
-The load balancer listens on **port 8081** to coexist with the webserver on port 80
-(both roles run on the same Docker container in this environment).
+Configure nginx en reverse proxy avec upstream `least_conn` sur tous les serveurs web.
+Le load balancer écoute sur le **port 8081** pour coexister avec le serveur web sur le port 80
+(les deux rôles tournent sur le même conteneur Docker dans cet environnement).
 
 ```
                    [port 8081]
@@ -57,49 +57,49 @@ The load balancer listens on **port 8081** to coexist with the webserver on port
                                    /var/www/html/index.html
 ```
 
-### Play 5 – Windows node (stubbed)
+### Play 5 – Nœud Windows (stub)
 
-> **Limitation:** A real Windows VM could not be provisioned due to Apple Silicon (ARM64)
-> incompatibility with the x86 Windows Server ISO, combined with insufficient disk space
-> (~11 GB free vs ~20 GB required for Windows Server Core).
-> Full details: `docs/07-windows-vm-attempts.md`
+> **Limitation :** Il n'a pas été possible de provisionner une VM Windows réelle.
+> Quatre approches ont été tentées (émulation UTM x86, ISO ARM64 via uupdump, VM Azure cloud)
+> et ont toutes échoué pour des raisons matérielles ou de quota cloud.
+> Le détail complet est disponible dans `docs/07-windows-vm-attempts.md`.
 >
-> The intended WinRM workflow is fully documented in
-> `ansible/roles/windows_webserver/tasks/main.yml` and would execute on a reachable
-> Windows node with the following tasks:
+> Le workflow WinRM prévu est entièrement documenté dans
+> `ansible/roles/windows_webserver/tasks/main.yml` et s'exécuterait sur un nœud Windows
+> accessible avec les tâches suivantes :
 > - `community.windows.win_timezone` → `Romance Standard Time` (Europe/Paris)
-> - Verify via `win_shell: (Get-TimeZone).Id`
+> - Vérification via `win_shell: (Get-TimeZone).Id`
 > - `community.windows.win_timezone` → `GMT Standard Time` (Africa/Abidjan)
 
-## Design notes
+## Notes de conception
 
-### SSH key management
+### Gestion des clés SSH
 
-SSH keys are stored at `~/.ansible-tp2/ansible_ed25519` (outside the Git workspace) so
-that `actions/checkout` clean operations between CI jobs do not delete them. The Docker
-container is built with the public key baked into `authorized_keys`. Both the Docker
-build job and the Ansible job reference the same stable path via `$HOME/.ansible-tp2/`.
+Les clés SSH sont stockées dans `~/.ansible-tp2/ansible_ed25519` (hors du workspace Git) afin
+que les opérations `git clean` de `actions/checkout` entre les jobs CI ne les suppriment pas.
+Le conteneur Docker est construit avec la clé publique intégrée dans `authorized_keys`.
+Le job Docker et le job Ansible référencent le même chemin stable via `$HOME/.ansible-tp2/`.
 
-### Docker container as target
+### Conteneur Docker comme cible
 
-The Ubuntu target is a Docker container (`ubuntu-target`) running on the same machine as
-the self-hosted runner. Port mapping:
+La cible Ubuntu est un conteneur Docker (`ubuntu-target`) tournant sur la même machine que le
+runner auto-hébergé. Correspondance des ports :
 
-| Host port | Container port | Purpose |
+| Port hôte | Port conteneur | Usage |
 |---|---|---|
 | 2222 | 22 | SSH (Ansible) |
 | 8080 | 80 | nginx webserver |
 | 8081 | 8081 | nginx load balancer |
 
-## Running locally
+## Exécution en local
 
 ```bash
 cd ansible
 ansible-playbook -i inventory.ini site.yml
 
-# Skip Windows stub
+# Exclure le stub Windows
 ansible-playbook -i inventory.ini site.yml --limit '!windows'
 
-# Dry-run
+# Simulation (dry-run)
 ansible-playbook -i inventory.ini site.yml --check
 ```
