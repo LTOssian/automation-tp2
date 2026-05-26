@@ -32,6 +32,7 @@ La documentation complète est disponible dans le dossier [`docs/`](docs/README.
 | Load balancer nginx | [docs/05-load-balancing.md](docs/05-load-balancing.md) |
 | Pipeline CI/CD | [docs/06-pipeline.md](docs/06-pipeline.md) |
 | Tentatives VM Windows | [docs/07-windows-vm-attempts.md](docs/07-windows-vm-attempts.md) |
+| Preuves d'exécution (screenshots) | [docs/08-screenshots.md](docs/08-screenshots.md) |
 
 ---
 

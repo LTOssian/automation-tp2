@@ -11,3 +11,4 @@ Ce dossier contient les réponses détaillées à chaque section du travail prat
 | [05-load-balancing.md](05-load-balancing.md) | Configuration du load balancer nginx |
 | [06-pipeline.md](06-pipeline.md) | Déroulement complet du pipeline CI/CD |
 | [07-windows-vm-attempts.md](07-windows-vm-attempts.md) | Tentatives de provisionnement Windows & limitations |
+| [08-screenshots.md](08-screenshots.md) | Preuves d'exécution (captures d'écran) |
