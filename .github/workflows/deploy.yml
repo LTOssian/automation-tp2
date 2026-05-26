@@ -80,6 +80,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure SSH keys exist
+        run: bash docker/gen-keys.sh
+
       - name: Write Ansible inventory
         run: |
           cat > ansible/inventory.ini << 'EOF'
