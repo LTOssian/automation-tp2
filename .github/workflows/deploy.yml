@@ -119,6 +119,9 @@ jobs:
           pip3 install --quiet --timeout 60 --retries 3 pywinrm || true
           ansible --version
 
+      - name: Clear stale SSH known_hosts entry for Docker container
+        run: ssh-keygen -R '[127.0.0.1]:2222' || true
+
       - name: Run Ansible playbook
         working-directory: ansible
         run: ansible-playbook -i inventory.ini site.yml
