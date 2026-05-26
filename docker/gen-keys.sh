@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Run this once before `docker compose up` to generate the SSH key pair
-# used by Ansible to connect to the ubuntu-target container.
+# Generates the SSH key pair used by Ansible to connect to the ubuntu-target container.
+# Keys are stored at ~/.ansible-tp2/ (outside the workspace) so they survive
+# `actions/checkout` clean operations between CI jobs.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KEY_DIR="$SCRIPT_DIR/../ansible/ssh_keys"
+KEY_DIR="$HOME/.ansible-tp2"
 PUBKEY_DST="$SCRIPT_DIR/ubuntu-target/authorized_keys"
 
 mkdir -p "$KEY_DIR"
+chmod 700 "$KEY_DIR"
 
 if [ ! -f "$KEY_DIR/ansible_ed25519" ]; then
   ssh-keygen -t ed25519 -f "$KEY_DIR/ansible_ed25519" -N "" -C "ansible@devops-tp2"
@@ -16,6 +18,9 @@ if [ ! -f "$KEY_DIR/ansible_ed25519" ]; then
 else
   echo "SSH key already exists at $KEY_DIR/ansible_ed25519"
 fi
+
+chmod 600 "$KEY_DIR/ansible_ed25519"
+chmod 644 "$KEY_DIR/ansible_ed25519.pub"
 
 cp "$KEY_DIR/ansible_ed25519.pub" "$PUBKEY_DST"
 echo "Public key copied to $PUBKEY_DST"
