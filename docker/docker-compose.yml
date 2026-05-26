@@ -6,6 +6,8 @@ services:
     hostname: ubuntu-target
     ports:
       - "2222:22"       # SSH access from host / Ansible
+      - "8080:80"       # nginx webserver page visible from host
+      - "8081:8081"     # nginx load balancer visible from host
     networks:
       devops-net:
         ipv4_address: 172.20.0.10

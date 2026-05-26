@@ -4,12 +4,6 @@
     name: nginx
     state: present
 
-- name: Remove default nginx site
-  ansible.builtin.file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: Reload nginx
-
 - name: Deploy load balancer config
   ansible.builtin.template:
     src: lb.conf.j2
