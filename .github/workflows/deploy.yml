@@ -31,7 +31,7 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
         env:
-          TF_VAR_web_hosts: ${{ vars.WEB_HOSTS || '["172.20.0.10"]' }}
+          TF_VAR_web_hosts: ${{ vars.WEB_HOSTS || '["127.0.0.1"]' }}
           TF_VAR_lb_host: ${{ vars.LB_HOST || '127.0.0.1' }}
           TF_VAR_ansible_user: ${{ vars.ANSIBLE_USER || 'ansible' }}
           TF_VAR_ansible_ssh_private_key: ${{ vars.ANSIBLE_SSH_KEY_PATH || './ssh_keys/ansible_ed25519' }}
